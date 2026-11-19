@@ -1,0 +1,34 @@
+name: Deploy Borjyar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: borjyar-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy Compose files on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_dir=/opt/apps/borjyar
+          mkdir -p "$deploy_dir"
+          cp compose.yaml index.html "$deploy_dir/"
+          cd "$deploy_dir"
+          docker compose config -q
+          docker compose up -d
+          docker compose ps
+          curl --fail --retry 10 --retry-delay 2 --retry-connrefused http://127.0.0.1:18081/
